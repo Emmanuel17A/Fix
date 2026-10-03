@@ -1,0 +1,18 @@
+# Python dependencies used by FIX.
+#
+# On Ubuntu, the project is designed to work with system packages where
+# possible rather than silently creating virtual environments or downloading
+# dependencies at application startup.
+#
+# Typical Ubuntu packages:
+#   python3-gi
+#   gir1.2-gtk-4.0
+#   python3-gi-cairo
+#   python3-cairo
+#   python3-opencv
+#   ffmpeg
+#
+# The entries below are primarily useful to contributors working in other
+# Python environments.
+PyGObject>=3.42
+opencv-python>=4.5

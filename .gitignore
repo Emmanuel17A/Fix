@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Development backups
+*.bak
+app.py.before_*.bak
+
+# Environments / secrets
+.venv/
+venv/
+env/
+.env
+.env.*
+*.key
+*.pem
+
+# Build / package output
+build/
+dist/
+*.egg-info/
+
+# Logs / temporary files
+*.log
+*.tmp
+*.temp
+.cache/
+.pulse_edit_*/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Video test/output media
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+*.m4v
