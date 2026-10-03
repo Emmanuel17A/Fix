@@ -178,6 +178,54 @@ def replace_cover(
     return output
 
 
+def trim_video(
+    source: Path,
+    output: Path,
+    start_seconds: float,
+    end_seconds: float,
+    media: MediaInfo,
+    progress: ProgressCallback,
+) -> Path:
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    common = [
+        "ffmpeg", "-y",
+        "-hide_banner", "-loglevel", "error",
+        "-ss", f"{start_seconds:.6f}",
+        "-to", f"{end_seconds:.6f}",
+        "-i", str(source),
+        "-map", "0",
+        "-map_metadata", "0",
+        "-map_chapters", "0",
+    ]
+    copy_cmd = [*common, "-c", "copy", str(output)]
+
+    progress(0.10, "Trimming video…")
+    try:
+        run_command(copy_cmd, progress, 0.10, "Copying compatible streams…")
+    except MediaProcessingError:
+        # Some containers/codecs cannot be cut cleanly at arbitrary timestamps.
+        # Keep every non-video stream copied and encode only the primary video.
+        reencode_cmd = [
+            *common,
+            *encoding_args(media),
+            "-c:a", "copy",
+            "-c:s", "copy",
+            "-c:t", "copy",
+            *_attached_picture_codecs(media),
+            str(output),
+        ]
+        run_command(
+            reencode_cmd,
+            progress,
+            0.20,
+            "Re-encoding incompatible video streams…",
+        )
+
+    progress(1.0, f"Saved: {output.name}")
+    return output
+
+
 def _keyframe_window(
     source: Path,
     duration: float,
