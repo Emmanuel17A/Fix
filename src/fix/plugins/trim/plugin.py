@@ -4,6 +4,9 @@ from fix.core.plugin import FixPlugin, PluginMetadata
 from .adapter import TrimAdapter
 
 
+# UI NOTE: This plugin is backend-only in this PR.
+# A dedicated GTK Trim tab will be added in a follow-up
+# contribution under the GTK desktop UI workstream.
 class TrimPlugin(FixPlugin):
     metadata = PluginMetadata(
         plugin_id="trim",

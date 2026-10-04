@@ -55,6 +55,7 @@ class TrimAdapter(PluginAdapter):
     def build_plan(self, context: OperationContext) -> OperationPlan:
         self.validate(context)
         output = Path(context.output)
+        # End times beyond the video duration are silently clamped to the video duration.
         end_seconds = min(
             float(self._end_seconds(context)),
             context.media.duration,

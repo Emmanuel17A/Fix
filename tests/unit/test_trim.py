@@ -42,7 +42,8 @@ def test_valid_trim_range_builds_new_output_plan(tmp_path):
     assert plan.replace_source is False
 
 
-def test_trim_end_exceeding_duration_is_clamped(tmp_path, monkeypatch):
+def test_trim_end_exceeding_duration_is_silently_clamped(tmp_path, monkeypatch):
+    """End times beyond the video duration are silently clamped."""
     source = tmp_path / "source.mp4"
     source.write_bytes(b"source")
     output = tmp_path / "trimmed.mp4"
@@ -73,4 +74,3 @@ def test_trim_end_exceeding_duration_is_clamped(tmp_path, monkeypatch):
 
     assert calls["start_seconds"] == 8.0
     assert calls["end_seconds"] == 10.0
-

@@ -186,6 +186,12 @@ def trim_video(
     media: MediaInfo,
     progress: ProgressCallback,
 ) -> Path:
+    """Trim accurately by copying only when the start is keyframe-aligned.
+
+    A keyframe-aligned start uses stream copy for a fast, exact cut. Other
+    starts re-encode only the video stream while copying audio, subtitles,
+    attachments, metadata, and chapters.
+    """
     output.parent.mkdir(parents=True, exist_ok=True)
 
     common = [
@@ -198,29 +204,29 @@ def trim_video(
         "-map_metadata", "0",
         "-map_chapters", "0",
     ]
-    copy_cmd = [*common, "-c", "copy", str(output)]
 
-    progress(0.10, "Trimming video…")
-    try:
-        run_command(copy_cmd, progress, 0.10, "Copying compatible streams…")
-    except MediaProcessingError:
-        # Some containers/codecs cannot be cut cleanly at arbitrary timestamps.
-        # Keep every non-video stream copied and encode only the primary video.
-        reencode_cmd = [
+    progress(0.03, "Checking keyframe alignment…")
+    keyframe_aligned = any(
+        abs(timestamp - start_seconds) <= 1e-6
+        for timestamp in keyframes(source)
+    )
+
+    if keyframe_aligned:
+        cmd = [*common, "-c", "copy", str(output)]
+        run_command(cmd, progress, 0.10, "Copying keyframe-aligned streams…")
+    else:
+        cmd = [
             *common,
-            *encoding_args(media),
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "18",
             "-c:a", "copy",
             "-c:s", "copy",
             "-c:t", "copy",
             *_attached_picture_codecs(media),
             str(output),
         ]
-        run_command(
-            reencode_cmd,
-            progress,
-            0.20,
-            "Re-encoding incompatible video streams…",
-        )
+        run_command(cmd, progress, 0.20, "Re-encoding video for accuracy…")
 
     progress(1.0, f"Saved: {output.name}")
     return output
