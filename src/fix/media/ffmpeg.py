@@ -217,9 +217,7 @@ def trim_video(
     else:
         cmd = [
             *common,
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "18",
+            *encoding_args(media),
             "-c:a", "copy",
             "-c:s", "copy",
             "-c:t", "copy",

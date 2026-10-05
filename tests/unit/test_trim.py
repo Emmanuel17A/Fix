@@ -8,6 +8,7 @@ SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 from fix.core.models import MediaInfo, OperationContext
+from fix.media.ffmpeg import encoding_args
 from fix.plugins.trim.adapter import TrimAdapter
 
 
@@ -22,6 +23,24 @@ def media_info(source: Path, duration: float = 10.0) -> MediaInfo:
         video_bitrate=1_000_000,
         size_bytes=1000,
     )
+
+
+def test_encoding_args_selects_libx265_for_hevc():
+    media = MediaInfo(
+        path=Path("source.mp4"),
+        duration=10.0,
+        width=1280,
+        height=720,
+        fps=30.0,
+        video_codec="hevc",
+        video_bitrate=1_000_000,
+        size_bytes=1000,
+    )
+
+    args = encoding_args(media)
+
+    assert "libx265" in args
+    assert "libx264" not in args
 
 
 def test_valid_trim_range_builds_new_output_plan(tmp_path):
