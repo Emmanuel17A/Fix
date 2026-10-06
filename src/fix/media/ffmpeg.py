@@ -217,6 +217,10 @@ def trim_video(
     else:
         cmd = [
             *common,
+            "-avoid_negative_ts", "make_zero",
+            "-start_at_zero",
+            "-vf", "setpts=PTS-STARTPTS",
+            "-af", "asetpts=PTS-STARTPTS",
             *encoding_args(media),
             "-c:a", "copy",
             "-c:s", "copy",

@@ -1,5 +1,7 @@
 from pathlib import Path
 import sys
+import subprocess
+from unittest.mock import patch
 
 import pytest
 
@@ -8,7 +10,7 @@ SRC = ROOT / "src"
 sys.path.insert(0, str(SRC))
 
 from fix.core.models import MediaInfo, OperationContext
-from fix.media.ffmpeg import encoding_args
+from fix.media.ffmpeg import encoding_args, trim_video
 from fix.plugins.trim.adapter import TrimAdapter
 
 
@@ -41,6 +43,52 @@ def test_encoding_args_selects_libx265_for_hevc():
 
     assert "libx265" in args
     assert "libx264" not in args
+
+
+def test_non_keyframe_trim_rebases_timeline(tmp_path):
+    source = tmp_path / "source.mp4"
+    output = tmp_path / "trimmed.mp4"
+    source.write_bytes(b"source")
+    media = media_info(source)
+    completed = subprocess.CompletedProcess(
+        args=["ffmpeg"],
+        returncode=0,
+        stdout="",
+        stderr="",
+    )
+
+    with (
+        patch(
+            "fix.media.ffmpeg.probe_media",
+            return_value=media,
+        ) as mocked_probe,
+        patch(
+            "fix.media.ffmpeg.keyframes",
+            return_value=[0.0, 2.0, 4.0],
+        ),
+        patch(
+            "fix.media.ffmpeg.subprocess.run",
+            return_value=completed,
+        ) as mocked_run,
+    ):
+        probed_media = mocked_probe(source)
+        trim_video(
+            source=source,
+            output=output,
+            start_seconds=1.337,
+            end_seconds=8.337,
+            media=probed_media,
+            progress=lambda fraction, label: None,
+        )
+
+    mocked_probe.assert_called_once_with(source)
+    command = mocked_run.call_args.args[0]
+    assert "-avoid_negative_ts" in command
+    assert "make_zero" in command
+    assert "-vf" in command
+    assert "setpts=PTS-STARTPTS" in command
+    assert "-af" in command
+    assert "asetpts=PTS-STARTPTS" in command
 
 
 def test_valid_trim_range_builds_new_output_plan(tmp_path):
