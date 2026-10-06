@@ -45,7 +45,52 @@ def test_encoding_args_selects_libx265_for_hevc():
     assert "libx264" not in args
 
 
-def test_non_keyframe_trim_rebases_timeline(tmp_path):
+def test_trim_command_uses_output_side_seeking(tmp_path):
+    source = tmp_path / "source.mp4"
+    output = tmp_path / "trimmed.mp4"
+    source.write_bytes(b"source")
+    media = media_info(source)
+    completed = subprocess.CompletedProcess(
+        args=["ffmpeg"],
+        returncode=0,
+        stdout="",
+        stderr="",
+    )
+
+    with (
+        patch(
+            "fix.media.ffmpeg.probe_media",
+            return_value=media,
+        ) as mocked_probe,
+        patch(
+            "fix.media.ffmpeg.keyframes",
+            return_value=[0.0, 2.0, 4.0, 6.0],
+        ),
+        patch(
+            "fix.media.ffmpeg.subprocess.run",
+            return_value=completed,
+        ) as mocked_run,
+    ):
+        probed_media = mocked_probe(source)
+        trim_video(
+            source=source,
+            output=output,
+            start_seconds=2.0,
+            end_seconds=8.0,
+            media=probed_media,
+            progress=lambda fraction, label: None,
+        )
+
+    mocked_probe.assert_called_once_with(source)
+    command = mocked_run.call_args.args[0]
+    assert command.index("-i") < command.index("-ss")
+    assert command.index("-i") < command.index("-t")
+    assert command[command.index("-t") + 1] == "6.000000"
+    assert "-to" not in command
+    assert "-avoid_negative_ts" not in command
+
+
+def test_trim_command_no_audio_filter_on_reencode_path(tmp_path):
     source = tmp_path / "source.mp4"
     output = tmp_path / "trimmed.mp4"
     source.write_bytes(b"source")
@@ -83,12 +128,9 @@ def test_non_keyframe_trim_rebases_timeline(tmp_path):
 
     mocked_probe.assert_called_once_with(source)
     command = mocked_run.call_args.args[0]
-    assert "-avoid_negative_ts" in command
-    assert "make_zero" in command
-    assert "-vf" in command
-    assert "setpts=PTS-STARTPTS" in command
-    assert "-af" in command
-    assert "asetpts=PTS-STARTPTS" in command
+    assert "-af" not in command
+    assert command[command.index("-c:a") + 1] == "copy"
+    assert "libx264" in command
 
 
 def test_valid_trim_range_builds_new_output_plan(tmp_path):

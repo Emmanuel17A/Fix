@@ -197,12 +197,9 @@ def trim_video(
     common = [
         "ffmpeg", "-y",
         "-hide_banner", "-loglevel", "error",
-        "-ss", f"{start_seconds:.6f}",
-        "-to", f"{end_seconds:.6f}",
         "-i", str(source),
-        "-map", "0",
-        "-map_metadata", "0",
-        "-map_chapters", "0",
+        "-ss", f"{start_seconds:.6f}",
+        "-t", f"{end_seconds - start_seconds:.6f}",
     ]
 
     progress(0.03, "Checking keyframe alignment…")
@@ -212,20 +209,30 @@ def trim_video(
     )
 
     if keyframe_aligned:
-        cmd = [*common, "-c", "copy", str(output)]
+        cmd = [
+            *common,
+            "-map", "0",
+            "-map_metadata", "0",
+            "-map_chapters", "0",
+            "-c", "copy",
+            str(output),
+        ]
         run_command(cmd, progress, 0.10, "Copying keyframe-aligned streams…")
     else:
         cmd = [
-            *common,
-            "-avoid_negative_ts", "make_zero",
-            "-start_at_zero",
-            "-vf", "setpts=PTS-STARTPTS",
-            "-af", "asetpts=PTS-STARTPTS",
+            "ffmpeg", "-y",
+            "-hide_banner", "-loglevel", "error",
+            "-fflags", "+genpts",
+            "-i", str(source),
+            "-ss", f"{start_seconds:.6f}",
+            "-t", f"{end_seconds - start_seconds:.6f}",
             *encoding_args(media),
+            "-bf", "0",
             "-c:a", "copy",
             "-c:s", "copy",
             "-c:t", "copy",
             *_attached_picture_codecs(media),
+            "-use_editlist", "0",
             str(output),
         ]
         run_command(cmd, progress, 0.20, "Re-encoding video for accuracy…")
